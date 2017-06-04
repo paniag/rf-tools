@@ -1,0 +1,4 @@
+#+TITLE: A Waveform Generator (WFG) written in Go with interfaces using the Scalability Protocols (SP)
+#+AUTHOR: Mac Radigan
+
+ # *EOF* 
