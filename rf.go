@@ -15,7 +15,7 @@
 
   var frame_id uint64 = 0 // atomic frame counter
 
-  // "echo" function, writes a byte channel to a file
+  /// "echo" function, writes a byte channel to a file
   func display(out *os.File, ch chan []byte) {
     
     for char := range ch {
@@ -24,7 +24,7 @@
     
   }
 
-  // data framer, chunks a channel into PAYLOAD_SIZE frames
+  /// data framer, chunks a channel into PAYLOAD_SIZE frames
   func framer(out *os.File, ch chan []byte) {
     
     const PAYLOAD_SIZE int = 1024                    // length of data frame payload
@@ -35,10 +35,10 @@
     
     /// read from channel, chunk into PAYLOAD_SIZE frames
     for data := range ch {
-      // required number of frames
+      /// required number of frames
       n_frames := int(math.Max( 1.0, math.Ceil(float64(len(data))/float64(PAYLOAD_SIZE)) )) 
       for n := 0; n < n_frames; n++ { // each frame
-        // starting / ending index of frame ( k_0 : k_1 )
+        /// starting / ending index of frame ( k_0 : k_1 )
         k_0 := n * PAYLOAD_SIZE
         k_1 := int(math.Min( float64(k_0+PAYLOAD_SIZE), float64(len(data)) ))
         /// placeholder for frame header
