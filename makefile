@@ -9,6 +9,9 @@
 
 target := rf
 
+## 1024 bytes per frame x 3.5 frames = 3584 bytes
+nbytes := 3584
+
 build:
 	go $@ $(target).go
 
@@ -16,7 +19,10 @@ run: build
 	go $@ $(target).go
 
 test:
-	@echo "TEST" | ./$(target)
+	@yes `seq -s '' 9` | tr -d '\n' | head -c $(nbytes) | ./$(target)
+
+test2:
+	@cat ./data/test.dat | ./$(target)
 
 bootstrap:
 	go get -u github.com/go-mangos/mangos

@@ -1,4 +1,12 @@
 #+TITLE: RF Tools
 #+AUTHOR: Mac Radigan
 
+#+begin_src bash :tangle ./run-demo.sh
+
+  make         ## compile
+
+  make test    ## run example demo
+
+#+end_src
+
  # *EOF* 
