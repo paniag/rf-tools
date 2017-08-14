@@ -1,83 +1,95 @@
-// rf.go
-// Copyright 2017 Mac Radigan
-// All Rights Reserved
+/*
+	rf.go
+	Copyright 2017 Mac Radigan
+	All Rights Reserved
+*/
+package main
 
-  package main
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sync/atomic"
 
-  import (
-    "bufio"
-    "io"
-    "math"
-    "os"
-    "strconv"
-    "sync/atomic"
-  )
+	"github.com/golang/glog"
+)
 
-  var frame_id uint64 = 0 // atomic frame counter
+const (
+	INPUT_BUFFER_SIZE = 2048
+	MAX_PAYLOAD_SIZE  = 1024
+)
 
-  /// "echo" function, writes a byte channel to a file
-  func display(out *os.File, ch chan []byte) {
-    
-    for char := range ch {
-      out.Write(char)
-    }
-    
-  }
+var (
+	atomicFrameId uint64
+	pad           []byte
+)
 
-  /// data framer, chunks a channel into PAYLOAD_SIZE frames
-  func framer(out *os.File, ch chan []byte) {
-    
-    const PAYLOAD_SIZE int = 1024                    // length of data frame payload
-    pad := make([]byte, PAYLOAD_SIZE, PAYLOAD_SIZE)  // padding source
-    for k, _ := range pad {
-      pad[k] = byte(48) // NB 48 ASCII Zero, placeholder for 0:NUL
-    }
-    
-    /// read from channel, chunk into PAYLOAD_SIZE frames
-    for data := range ch {
-      /// required number of frames
-      n_frames := int(math.Max( 1.0, math.Ceil(float64(len(data))/float64(PAYLOAD_SIZE)) )) 
-      for n := 0; n < n_frames; n++ { // each frame
-        /// starting / ending index of frame ( k_0 : k_1 )
-        k_0 := n * PAYLOAD_SIZE
-        k_1 := int(math.Min( float64(k_0+PAYLOAD_SIZE), float64(len(data)) ))
-        /// placeholder for frame header
-        out.WriteString("Frame " + strconv.FormatUint(frame_id, 10) + " : " + strconv.Itoa(k_1-k_0) + " bytes\n")
-        /// write payload data
-        out.Write(data[k_0:k_1]) // payload data
-        n_pad := int(math.Mod(float64(k_1-k_0), float64(PAYLOAD_SIZE)) )
-        out.Write(pad[0:n_pad])  // residual frame padding
-        out.WriteString("\n")
-        atomic.AddUint64(&frame_id, 1)
-      }
-    
-    }
-  }
+func framer(out *os.File, ch chan []byte) {
+	for data := range ch {
+		start, end := 0, MAX_PAYLOAD_SIZE
+		numFrames := len(data) / MAX_PAYLOAD_SIZE
+		if len(data)%MAX_PAYLOAD_SIZE > 0 {
+			numFrames++
+		}
 
-  func main() {
-    
-    const BUF_SIZE int = 2048          // input buffer length
-    in  := bufio.NewReader(os.Stdin)
-    out := os.Stdout
-    ch  := make(chan []byte)
-  //go display(out, ch)
-    go framer(out, ch)
-    
-    /// read stdin to buffer, send to downstream processing
-    for {
-      buf := make([]byte, BUF_SIZE)
-      n, err := in.Read(buf)
-      buf = buf[:n]
-      if n > 0 { ch <- buf }
-      if err == io.EOF {
-        break
-      } else if err != nil {
-        panic(err)
-      }
-    }
-    
-    os.Exit(0)
-    
-  }
+		for frameIdx := 0; frameIdx < numFrames; frameIdx++ {
 
-// *EOF*
+			frame := data[start:end]
+
+			out.WriteString(fmt.Sprintf("Frame %v : %v bytes\n", atomicFrameId, len(frame)))
+
+			out.Write(frame)
+
+			padLength := MAX_PAYLOAD_SIZE - len(frame)
+			out.Write(pad[:padLength])
+			out.WriteString("\n")
+			atomic.AddUint64(&atomicFrameId, 1)
+
+			start = end
+			end += MAX_PAYLOAD_SIZE
+			if len(data) < end {
+				end = len(data)
+			}
+		}
+	}
+}
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	out := os.Stdout
+	ch := make(chan []byte)
+	var arr [INPUT_BUFFER_SIZE]byte
+
+	// More idiomatic to populate an array. Specifying the capacity reserves the
+	//  memory upfront, so it's literally 1 allocation rather than
+	//  "amortized O(1)".
+	pad := make([]byte, 0, MAX_PAYLOAD_SIZE)
+	for i := 0; i < MAX_PAYLOAD_SIZE; i++ {
+		// NB 48 ASCII Zero, placeholder for 0:NUL
+		pad = append(pad, byte(48))
+	}
+
+	go framer(out, ch)
+
+loop:
+	for {
+		buf := arr[:]
+		n, err := in.Read(buf)
+		// Handle errors as close as possible to their origin.
+		// Use switch instead of if/else if chains.
+		switch err {
+		case io.EOF:
+			break loop
+		case nil:
+			buf = buf[:n]
+			if n > 0 {
+				ch <- buf
+			}
+		default:
+			glog.Fatal(err)
+		}
+	}
+
+	os.Exit(0)
+}
