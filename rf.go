@@ -34,6 +34,9 @@ func framer(out *os.File, ch chan []byte) {
 		}
 
 		for frameIdx := 0; frameIdx < numFrames; frameIdx++ {
+			if len(data) < end {
+				end = len(data)
+			}
 
 			frame := data[start:end]
 
@@ -48,9 +51,6 @@ func framer(out *os.File, ch chan []byte) {
 
 			start = end
 			end += MAX_PAYLOAD_SIZE
-			if len(data) < end {
-				end = len(data)
-			}
 		}
 	}
 }
@@ -64,7 +64,7 @@ func main() {
 	// More idiomatic to populate an array. Specifying the capacity reserves the
 	//  memory upfront, so it's literally 1 allocation rather than
 	//  "amortized O(1)".
-	pad := make([]byte, 0, MAX_PAYLOAD_SIZE)
+	pad = make([]byte, 0, MAX_PAYLOAD_SIZE)
 	for i := 0; i < MAX_PAYLOAD_SIZE; i++ {
 		// NB 48 ASCII Zero, placeholder for 0:NUL
 		pad = append(pad, byte(48))
@@ -75,7 +75,10 @@ func main() {
 loop:
 	for {
 		buf := arr[:]
+		fmt.Printf("len(buf) = %v\n", len(buf))
+		fmt.Printf("cap(buf) = %v\n", cap(buf))
 		n, err := in.Read(buf)
+		fmt.Printf("%v, %#v = in.Read(buf)\n", n, err)
 		// Handle errors as close as possible to their origin.
 		// Use switch instead of if/else if chains.
 		switch err {
@@ -90,6 +93,8 @@ loop:
 			glog.Fatal(err)
 		}
 	}
+
+	fmt.Println("Done.")
 
 	os.Exit(0)
 }
