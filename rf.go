@@ -75,6 +75,7 @@ func main() {
 loop:
 	for {
 		buf := arr[:]
+		// buf := make([]byte, INPUT_BUFFER_SIZE) /* TODO: investigating this alternative */
 		n, err := in.Read(buf)
 		// Handle errors as close as possible to their origin.
 		// Use switch instead of if/else if chains.

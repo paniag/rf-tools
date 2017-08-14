@@ -3,9 +3,10 @@
 ## Copyright 2017 Mac Radigan
 ## All Rights Reserved
 
-.PHONY: build run bootstrap \
-   alt-1 alt-2              \
-   seq-1 seq-3   seq-inf    \
+.PHONY: build run              \
+   bootstrap-go bootstrap-apt  \
+   alt-1 alt-2                 \
+   seq-1 seq-3   seq-inf       \
   test-1 test-3 test-inf
 .DEFAULT_GOAL := build
 
@@ -44,7 +45,11 @@ seq-inf:
 test-inf:
 	@./tests/fiducial.m 1024 0 15 0 | ./$(target)
 
-bootstrap:
+bootstrap-go:
 	go get -u github.com/golang/glog
+
+bootstrap-apt:
+	apt-get -y install golang
+	apt-get -y install octave
 
 ## *EOF* 
