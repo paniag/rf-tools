@@ -1,83 +1,129 @@
-// rf.go
-// Copyright 2017 Mac Radigan
-// All Rights Reserved
+/*
+	rf.go
+	Copyright 2017 Mac Radigan
+	All Rights Reserved
+*/
+// Package comments should use /* */ style and describe the purpose and usage
+//  of the package.
 
-  package main
+package main
 
-  import (
-    "bufio"
-    "io"
-    "math"
-    "os"
-    "strconv"
-    "sync/atomic"
-  )
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sync/atomic"
 
-  var frame_id uint64 = 0 // atomic frame counter
+	// glog provies much friendlier, more flexible logging than "log",
+	//  which in turn is a lot better than fmt.Print*.
+	"github.com/golang/glog"
+)
 
-  /// "echo" function, writes a byte channel to a file
-  func display(out *os.File, ch chan []byte) {
-    
-    for char := range ch {
-      out.Write(char)
-    }
-    
-  }
+// +1 Constants do use UPPER_SNAKE_CASE, like the convention for C macros.
+// Type annotations are usually optional on numerical constants.
+const (
+	INPUT_BUFFER_SIZE = 2048
+	MAX_PAYLOAD_SIZE  = 1024
+)
 
-  /// data framer, chunks a channel into PAYLOAD_SIZE frames
-  func framer(out *os.File, ch chan []byte) {
-    
-    const PAYLOAD_SIZE int = 1024                    // length of data frame payload
-    pad := make([]byte, PAYLOAD_SIZE, PAYLOAD_SIZE)  // padding source
-    for k, _ := range pad {
-      pad[k] = byte(48) // NB 48 ASCII Zero, placeholder for 0:NUL
-    }
-    
-    /// read from channel, chunk into PAYLOAD_SIZE frames
-    for data := range ch {
-      /// required number of frames
-      n_frames := int(math.Max( 1.0, math.Ceil(float64(len(data))/float64(PAYLOAD_SIZE)) )) 
-      for n := 0; n < n_frames; n++ { // each frame
-        /// starting / ending index of frame ( k_0 : k_1 )
-        k_0 := n * PAYLOAD_SIZE
-        k_1 := int(math.Min( float64(k_0+PAYLOAD_SIZE), float64(len(data)) ))
-        /// placeholder for frame header
-        out.WriteString("Frame " + strconv.FormatUint(frame_id, 10) + " : " + strconv.Itoa(k_1-k_0) + " bytes\n")
-        /// write payload data
-        out.Write(data[k_0:k_1]) // payload data
-        n_pad := int(math.Mod(float64(len(data)), float64(PAYLOAD_SIZE)) )
-        out.Write(pad[0:n_pad])  // residual frame padding
-        out.WriteString("\n")
-        atomic.AddUint64(&frame_id, 1)
-      }
-    
-    }
-  }
+// The initialization was unnecessary. Go variables without explicit
+// initializers are always initialized with the zero value of their type.
+var frameId uint64 // atomic frame counter // Use camel case for variable names rather than underscores.
 
-  func main() {
-    
-    const BUF_SIZE int = 2048          // input buffer length
-    in  := bufio.NewReader(os.Stdin)
-    out := os.Stdout
-    ch  := make(chan []byte)
-  //go display(out, ch)
-    go framer(out, ch)
-    
-    /// read stdin to buffer, send to downstream processing
-    for {
-      buf := make([]byte, BUF_SIZE)
-      n, err := in.Read(buf)
-      buf = buf[:n]
-      if n > 0 { ch <- buf }
-      if err == io.EOF {
-        break
-      } else if err != nil {
-        panic(err)
-      }
-    }
-    
-    os.Exit(0)
-    
-  }
+// See http://godoc.org/io/ioutil#WriteFile
+
+// Do 3 slashes have some special meaning I'm unaware of? Normally comments get 2 slashes.
+/// data framer, chunks a channel into MAX_PAYLOAD_SIZE frames
+func framer(out *os.File, ch chan []byte) {
+	// There shouldn't be a blank line at the start of a block.
+	// Comments should be sentences where possible, and normally begin with a
+	//  capital letter and end with some punctuation, eg a period.
+	// Choose variable names that are concise but self-explanatory.
+	// Avoid redundant comments.
+	pad := make([]byte, MAX_PAYLOAD_SIZE, MAX_PAYLOAD_SIZE)
+	// i, j, and k are all idiomatic names for integer indices, in that order of
+	//  preference. k often means "key". You can view a slice index as a key, but
+	//  it may be misleading to readers.
+	// You don't need the ", _"; you can just use the single value form.
+	for i := range pad {
+		// NB 48 ASCII Zero, placeholder for 0:NUL
+		// But why?
+		pad[i] = byte(48)
+	}
+
+	/// read from channel, chunk into MAX_PAYLOAD_SIZE frames
+	// +1 Ranging over a channel is idiomatic Go.
+	for data := range ch {
+		// Use descriptive variable names.
+		// Yikes, that's a lot of nested conversions and calls.
+		numFrames := len(data) / MAX_PAYLOAD_SIZE
+		if len(data)%MAX_PAYLOAD_SIZE > 0 {
+			numFrames++
+		}
+
+		for frameIdx := 0; frameIdx < numFrames; frameIdx++ {
+			// Go for simplicity, including simpler expressions.
+			start := frameIdx * MAX_PAYLOAD_SIZE
+			end := (frameIdx + 1) * MAX_PAYLOAD_SIZE
+			if len(data) < end {
+				end = len(data)
+			}
+
+			// Name that frame! :)
+			// Note that this is *not* an allocation. Well, not of len(frame) bytes anyway.
+			// It's actually a reference into a subrange of the underlying array.
+			frame := data[start:end]
+
+			// The fmt package is standard and shorter.
+			out.WriteString(fmt.Sprintf("Frame %v : %v bytes\n", frame_id, len(frame)))
+
+			out.Write(frame)
+
+			padLength := MAX_PAYLOAD_SIZE - len(frame)
+			// Slices starting from index 0 or ending at the end of the original slice
+			// or array do not require that the obvious bound be specified.
+			out.Write(pad[:padLength])
+			out.WriteString("\n")
+			atomic.AddUint64(&frame_id, 1)
+		}
+	}
+}
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	out := os.Stdout
+	ch := make(chan []byte)
+	// Since you have a 0-capacity channel, you only need to allocate buf once.
+	buf := make([]byte, INPUT_BUFFER_SIZE)
+
+	go framer(out, ch)
+
+	/// read stdin to buffer, send to downstream processing
+out:
+	for {
+		buf = buf[:0]
+		n, err := in.Read(buf)
+		// Handle errors as close as possible to their origin.
+		// Use switch instead of if/else if chains.
+		switch err {
+		case io.EOF:
+			break
+		case nil:
+			buf = buf[:n]
+			if n > 0 {
+				ch <- buf
+			}
+		default:
+			// DON'T PANIC
+			// Do realize this will crash with a stacktrace on any error returned.
+			// The stack trace part might not be so useful since it's a standard
+			//  library function
+			glog.Fatal(err)
+		}
+	}
+
+	os.Exit(0)
+}
 
 // *EOF*
