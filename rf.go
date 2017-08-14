@@ -75,7 +75,6 @@ func main() {
 loop:
 	for {
 		buf := arr[:]
-		// buf := make([]byte, INPUT_BUFFER_SIZE) /* TODO: investigating this alternative */
 		fmt.Printf("len(buf) = %v\n", len(buf))
 		fmt.Printf("cap(buf) = %v\n", cap(buf))
 		n, err := in.Read(buf)
