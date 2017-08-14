@@ -57,4 +57,4 @@
   short_seq = repmat('X', 1, SHORT_SIZE);
   fprintf(1, short_seq);
 
-## *EOF*
+## *EOF* 
