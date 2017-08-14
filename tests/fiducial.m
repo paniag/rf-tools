@@ -10,6 +10,7 @@
   NUMBER_OF_REPETITIONS  = 5;    % number of times to repeat sequence (NB. forever if 0)
 
   args = argv();
+  %% usage
   if(0 == size(args,1))
     fprintf(2, 'usage:  %s [MESSSAGE_SIZE] <SHORT_SIZE> <NUMBER_OF_PATTERNS> <NUMBER_OF_REPETITIONS>\n', mfilename);
     fprintf(2, '');
