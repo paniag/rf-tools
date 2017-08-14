@@ -45,7 +45,7 @@
         out.WriteString("Frame " + strconv.FormatUint(frame_id, 10) + " : " + strconv.Itoa(k_1-k_0) + " bytes\n")
         /// write payload data
         out.Write(data[k_0:k_1]) // payload data
-        n_pad := int(math.Mod(float64(len(data)), float64(PAYLOAD_SIZE)) )
+        n_pad := int(math.Mod(float64(k_1-k_0), float64(PAYLOAD_SIZE)) )
         out.Write(pad[0:n_pad])  // residual frame padding
         out.WriteString("\n")
         atomic.AddUint64(&frame_id, 1)
