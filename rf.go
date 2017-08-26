@@ -75,10 +75,7 @@ func main() {
 loop:
 	for {
 		buf := arr[:]
-		fmt.Printf("len(buf) = %v\n", len(buf))
-		fmt.Printf("cap(buf) = %v\n", cap(buf))
 		n, err := in.Read(buf)
-		fmt.Printf("%v, %#v = in.Read(buf)\n", n, err)
 		// Handle errors as close as possible to their origin.
 		// Use switch instead of if/else if chains.
 		switch err {
