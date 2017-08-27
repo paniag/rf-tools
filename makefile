@@ -5,6 +5,7 @@
 
 .PHONY: build run              \
    bootstrap-go bootstrap-apt  \
+   test                        \
    alt-1 alt-2                 \
    seq-1 seq-3   seq-inf       \
   test-1 test-3 test-inf
@@ -44,6 +45,9 @@ seq-inf:
 	@./tests/fiducial.m 1024 0 15 0
 test-inf:
 	@./tests/fiducial.m 1024 0 15 0 | ./$(target)
+
+test:
+	$(MAKE) seq-1 && echo && $(MAKE) test-1
 
 bootstrap-go:
 	go get -u github.com/golang/glog
