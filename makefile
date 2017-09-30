@@ -2,9 +2,13 @@
 ## makefile (for rf-tools)
 ## Copyright 2017 Mac Radigan
 ## All Rights Reserved
-## Mac Radigan
 
-.PHONY: build run bootstrap test
+.PHONY: build run              \
+   bootstrap-go bootstrap-apt  \
+   test                        \
+   alt-1 alt-2                 \
+   seq-1 seq-3   seq-inf       \
+  test-1 test-3 test-inf
 .DEFAULT_GOAL := build
 
 target := rf
@@ -18,13 +22,38 @@ build:
 run: build
 	go $@ $(target).go
 
-test:
+alt-1:
 	@yes `seq -s '' 9` | tr -d '\n' | head -c $(nbytes) | ./$(target)
 
-test2:
-	@cat ./data/test.dat | ./$(target)
+alt-2:
+	@./tests/fiducial.m | ./$(target)
 
-bootstrap:
-	go get -u github.com/go-mangos/mangos
+## 1 sequence, N=1024, 3 patterns, 256 resdiual bytes
+seq-1:
+	@./tests/fiducial.m 1024 256 3 1
+test-1:
+	@./tests/fiducial.m 1024 256 3 1 | ./$(target)
 
-## *EOF*
+## 3 sequences, N=1024, 2 patterns, 256 resdiual bytes
+seq-3:
+	@./tests/fiducial.m 1024 256 2 3
+test-3:
+	@./tests/fiducial.m 1024 256 2 3 | ./$(target)
+
+## infinite sequence, N=1024, 15 patterns
+seq-inf:
+	@./tests/fiducial.m 1024 0 15 0
+test-inf:
+	@./tests/fiducial.m 1024 0 15 0 | ./$(target)
+
+test:
+	$(MAKE) seq-1 && echo && $(MAKE) test-1
+
+bootstrap-go:
+	go get -u github.com/golang/glog
+
+bootstrap-apt:
+	apt-get -y install golang
+	apt-get -y install octave
+
+## *EOF* 
